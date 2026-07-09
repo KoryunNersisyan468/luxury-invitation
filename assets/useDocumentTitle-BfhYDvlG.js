@@ -1,0 +1,1 @@
+import{r as o}from"./index-BNj0ZWyf.js";function n(e){o.useEffect(()=>{const t=document.title;return document.title=e?`${e} | Belle Ame`:"Belle Ame — Luxury Wedding Invitations",()=>{document.title=t}},[e])}export{n as u};
