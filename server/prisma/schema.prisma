@@ -1,0 +1,221 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum InvitationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ChatRoomType {
+  APPROVAL
+  SUPPORT
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+}
+
+model User {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  password  String
+  role      Role      @default(USER)
+  isEmailVerified Boolean @default(false)
+  uploadedImages UploadedImage[]
+  sentMessages Message[]
+  chatRooms ChatRoomParticipant[]
+  passwordResetTokens PasswordResetToken[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model Invitation {
+  id             String           @id @default(uuid())
+  slug           String           @unique
+  title          String?
+  category       String           @default("wedding")
+  style          String           @default("elegant")
+  couple         Json
+  hero           Json
+  story          Json
+  calendar       Json
+  rsvpSection    Json?
+  timelineSection Json?
+  dressCodeSection Json?
+  weddingDate    DateTime
+  musicUrl       String?
+  finalSection   Json?
+  status         InvitationStatus @default(PENDING)
+  isPublic       Boolean          @default(false)
+  createdBy      String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  locations      Location[]
+  timelineEvents TimelineEvent[]
+  dressCodeImages DressCodeImage[]
+  galleryImages  GalleryImage[]
+  rsvps          Rsvp[]
+  chatRooms      ChatRoom[]
+}
+
+model InvitationCategory {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  name        String
+  description String?
+  fields      Json?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model InvitationTemplate {
+  id          String   @id @default(uuid())
+  category    String
+  style       String
+  name        String
+  previewUrl  String?
+  config      Json?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model UploadedImage {
+  id        String   @id @default(uuid())
+  url       String
+  publicId  String
+  width     Int?
+  height    Int?
+  folder    String?
+  createdBy String?
+  user      User?    @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+}
+
+model Location {
+  id           String      @id @default(uuid())
+  invitation   Invitation  @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  invitationId String
+  type         String?
+  name         String
+  nameEn       String?
+  imageUrl     String?
+  address      String
+  mapUrl       String?
+  order        Int         @default(0)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model TimelineEvent {
+  id           String      @id @default(uuid())
+  invitation   Invitation  @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  invitationId String
+  title        String
+  description  String
+  time         String
+  order        Int         @default(0)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model DressCodeImage {
+  id           String      @id @default(uuid())
+  invitation   Invitation  @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  invitationId String
+  label        String
+  imageUrl     String
+  order        Int         @default(0)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model GalleryImage {
+  id           String      @id @default(uuid())
+  invitation   Invitation  @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  invitationId String
+  imageUrl     String
+  caption      String?
+  order        Int         @default(0)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model Rsvp {
+  id           String      @id @default(uuid())
+  invitation   Invitation  @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  invitationId String
+  fullName     String
+  email        String
+  phone        String?
+  attendance   String
+  dietaryRestrictions String?
+  guests       Int         @default(0)
+  message      String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model ChatRoom {
+  id            String   @id @default(uuid())
+  type          ChatRoomType
+  invitation    Invitation? @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  invitationId  String?
+  name          String
+  description   String?
+  participants  ChatRoomParticipant[]
+  messages      Message[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model ChatRoomParticipant {
+  id        String      @id @default(uuid())
+  chatRoom  ChatRoom    @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+  chatRoomId String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  role      String      @default("member")
+  joinedAt  DateTime    @default(now())
+
+  @@unique([chatRoomId, userId])
+}
+
+model Message {
+  id        String         @id @default(uuid())
+  chatRoom  ChatRoom       @relation(fields: [chatRoomId], references: [id], onDelete: Cascade)
+  chatRoomId String
+  sender    User           @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  senderId  String
+  content   String
+  status    MessageStatus  @default(SENT)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+}
